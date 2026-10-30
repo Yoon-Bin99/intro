@@ -1,181 +1,350 @@
-/* HTML에서 defer로 불러오므로 DOM이 다 만들어진 뒤에 실행됩니다. */
+/* =========================================================
+ * 프로젝트 카드 캐러셀 + 상세 팝업
+ * projects.js의 Projects 배열을 읽어 화면을 그립니다.
+ * ========================================================= */
 
-/* ================================================================= */
-/* 1. 다크모드 구현                                                   */
-/* ================================================================= */
+const carousel = document.getElementById("carousel");
+const dotsWrap = document.getElementById("dots");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const modal = document.getElementById("modal");
+const modalBody = document.getElementById("modalBody");
 
-// 다크모드 토글 버튼 엘리먼트 가져오기
-const darkModeToggle = document.getElementById('dark-mode-toggle');
+const AUTOPLAY_MS = 4500;
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// 사용자의 다크모드 선호 설정을 브라우저 스토리지에서 불러옵니다.
-// 로드 시점에 이전에 선택했던 테마가 있다면 적용해 줍니다.
-const savedTheme = localStorage.getItem('theme');
-if (savedTheme === 'dark') {
-    document.body.classList.add('dark-mode');
+let current = 0;
+let timer = null;
+const cards = [];
+const dots = [];
+
+/* ---------------------------------------------------------
+ * 텍스트 처리
+ * 사용자 데이터는 먼저 이스케이프해서 XSS를 막고,
+ * 그다음 `코드`와 [미작성] 표시만 HTML로 바꿉니다.
+ * --------------------------------------------------------- */
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 }
 
-// 버튼 클릭 시 dark-mode 클래스를 body에 토글(추가/제거)합니다.
-darkModeToggle.addEventListener('click', () => {
-    // classList.toggle은 해당 클래스가 있으면 제거하고, 없으면 추가해주는 메서드입니다.
-    document.body.classList.toggle('dark-mode');
+function rich(str) {
+    return escapeHtml(str)
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        .replace(/\[([^\]]+)\]/g, '<mark class="todo">[$1]</mark>');
+}
 
-    // 새로고침해도 다크모드 설정이 유지될 수 있도록 로컬 스토리지에 테마 상태를 저장합니다.
-    if (document.body.classList.contains('dark-mode')) {
-        localStorage.setItem('theme', 'dark');
-    } else {
-        localStorage.setItem('theme', 'light');
-    }
-});
+const icons = {
+    arrow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+    close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    chev: '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+    github:
+        '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>'
+};
 
+/* ---------------------------------------------------------
+ * 카드 만들기
+ * --------------------------------------------------------- */
+function createCard(project, index) {
+    const card = document.createElement("article");
+    card.className = "card";
+    card.tabIndex = 0;
+    card.style.setProperty("--accent", project.accent);
+    card.style.setProperty("--accent2", project.accent2);
+    card.setAttribute("aria-label", `${project.title} 프로젝트, 열어서 자세히 보기`);
 
-/* ================================================================= */
-/* 2. 방명록 관리 및 로컬스토리지 연동                                   */
-/* ================================================================= */
+    const tags = project.tags.slice(0, 5)
+        .map(t => `<span class="tag">${rich(t)}</span>`)
+        .join("");
 
-// 방명록 데이터를 메모리에 담아두기 위한 배열입니다.
-let guestbooks = [];
+    card.innerHTML = `
+    <span class="card-mono" aria-hidden="true">${escapeHtml(project.title.charAt(0).toUpperCase())}</span>
+    <div class="card-top">
+      <span class="card-num">${String(index + 1).padStart(2, "0")} / ${String(Projects.length).padStart(2, "0")}</span>
+      <span class="card-org">${rich(project.org)}</span>
+    </div>
+    <h2>${escapeHtml(project.title)}</h2>
+    <p class="card-sub">${rich(project.subtitle)}</p>
+    <div class="card-tags">${tags}</div>
+    <span class="card-cta">자세히 보기 ${icons.arrow}</span>
+  `;
 
-// DOM 엘리먼트들을 취득합니다.
-const guestbookForm = document.querySelector('#contact form');
-const nameInput = document.getElementById('name');
-const messageInput = document.getElementById('message');
-const guestbookList = document.getElementById('guestbook-list');
-const noGuestbookMsg = document.getElementById('no-guestbook');
-const saveStorageBtn = document.getElementById('save-storage-btn');
+    // 가운데 카드면 팝업, 옆 카드면 그 카드로 이동
+    card.addEventListener("click", () => {
+        if (dragMoved) return;
+        if (index === current) openModal(project);
+        else goTo(index);
+    });
 
-// 화면에 방명록 배열(guestbooks)을 다시 그리는(렌더링) 함수입니다.
-function renderGuestbooks() {
-    // 기존 리스트 내부를 깨끗이 비웁니다.
-    guestbookList.innerHTML = '';
+    card.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            index === current ? openModal(project) : goTo(index);
+        }
+    });
 
-    // 방명록이 하나도 없는 경우 "등록된 방명록이 없습니다" 메시지를 띄웁니다.
-    if (guestbooks.length === 0) {
-        noGuestbookMsg.style.display = 'block';
-        return;
-    }
+    // 마우스 위치를 따라 빛이 움직이는 효과
+    card.addEventListener("pointermove", e => {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty("--mx", `${e.clientX - r.left}px`);
+        card.style.setProperty("--my", `${e.clientY - r.top}px`);
+    });
 
-    // 방명록이 존재하면 메시지를 숨깁니다.
-    noGuestbookMsg.style.display = 'none';
+    return card;
+}
 
-    // 배열을 순회하며 HTML 요소를 동적으로 생성해 화면에 추가합니다.
-    guestbooks.forEach((item, index) => {
-        // <li> 태그 생성
-        const li = document.createElement('li');
-        li.className = 'guestbook-item';
+function createDot(project, index) {
+    const dot = document.createElement("button");
+    dot.className = "dot";
+    dot.setAttribute("role", "tab");
+    dot.setAttribute("aria-label", `${project.title}로 이동`);
+    dot.style.setProperty("--dot-color", project.accent);
+    dot.addEventListener("click", () => goTo(index));
+    return dot;
+}
 
-        // 이름 영역 <div> 생성 및 텍스트 대입
-        const nameDiv = document.createElement('div');
-        nameDiv.className = 'guestbook-name';
-        // textContent를 사용해 XSS 공격을 예방합니다. (HTML 태그가 실행되지 않고 텍스트 그대로 노출됨)
-        nameDiv.textContent = item.name + ' 님';
+/* ---------------------------------------------------------
+ * 카드 배치: 가운데 기준 상대 위치(offset)로 3D 변형을 계산
+ * offset 0 = 가운데, -1 = 왼쪽, 1 = 오른쪽
+ * --------------------------------------------------------- */
+function layout() {
+    const n = Projects.length;
+    const mobile = window.innerWidth <= 720;
+    const shiftX = mobile ? 70 : 62;   // 옆 카드가 얼마나 비켜나는지 (카드 너비 대비 %)
 
-        // 내용 영역 <div> 생성 및 텍스트 대입
-        const msgDiv = document.createElement('div');
-        msgDiv.className = 'guestbook-message';
-        msgDiv.textContent = item.message;
+    cards.forEach((card, i) => {
+        let offset = i - current;
+        if (offset > n / 2) offset -= n;     // 끝과 처음이 이어지도록 보정
+        if (offset < -n / 2) offset += n;
 
-        // 개별 삭제(X) 버튼 생성
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.textContent = '×';
-        deleteBtn.title = '방명록 삭제';
+        const abs = Math.abs(offset);
+        const visible = abs <= 2;
 
-        // 삭제 버튼 클릭 이벤트 등록
-        deleteBtn.addEventListener('click', () => {
-            // 사용자에게 진짜 삭제할 것인지 묻습니다 (confirm 메서드 사용)
-            if (confirm(`'${item.name}' 님의 방명록을 삭제하시겠습니까?`)) {
-                // splice(인덱스, 개수)로 메모리 상의 배열에서 해당 아이템을 제거합니다.
-                guestbooks.splice(index, 1);
+        card.style.transform = `
+      translateX(${offset * shiftX}%)
+      translateZ(${-abs * 220}px)
+      rotateY(${-offset * 30}deg)
+      scale(${1 - abs * 0.08})
+    `;
+        card.style.opacity = visible ? String(1 - abs * 0.3) : "0";
+        card.style.zIndex = String(10 - abs);
+        card.style.pointerEvents = visible ? "auto" : "none";
+        card.classList.toggle("is-active", offset === 0);
+        card.setAttribute("aria-current", offset === 0 ? "true" : "false");
+    });
 
-                // 삭제 후 로컬 스토리지도 동기화해야 새로고침해도 삭제된 상태가 유지됩니다.
-                localStorage.setItem('savedGuestbooks', JSON.stringify(guestbooks));
-
-                // 변경된 메모리 상태를 토대로 화면을 재렌더링합니다.
-                renderGuestbooks();
-            }
-        });
-
-        // 생성한 이름, 내용, 삭제 버튼 요소를 <li>의 자식으로 추가
-        li.appendChild(nameDiv);
-        li.appendChild(msgDiv);
-        li.appendChild(deleteBtn);
-
-        // 최종 완성된 <li>를 <ul> 목록에 추가
-        guestbookList.appendChild(li);
+    dots.forEach((dot, i) => {
+        dot.classList.toggle("is-active", i === current);
+        dot.setAttribute("aria-selected", String(i === current));
     });
 }
 
-// [기능 A] 방명록 임시 등록 기능
-guestbookForm.addEventListener('submit', (event) => {
-    // <form>의 submit 이벤트는 기본적으로 페이지를 새로고침시키므로 막아줍니다.
-    event.preventDefault();
-
-    // 입력값 가져오기 (공백 제거: trim())
-    const name = nameInput.value.trim();
-    const message = messageInput.value.trim();
-
-    // 입력 유효성 검사
-    if (!name || !message) {
-        alert('이름과 내용을 모두 입력해 주세요!');
-        return;
-    }
-
-    // unshift()는 배열 맨 앞(0번 인덱스)에 데이터를 삽입합니다.
-    // 최신 방명록이 목록 맨 위에 보이도록 하기 위함입니다.
-    guestbooks.unshift({ name, message });
-
-    // 화면 갱신
-    renderGuestbooks();
-
-    // 입력 필드 초기화
-    nameInput.value = '';
-    messageInput.value = '';
-
-    alert('방명록이 등록되었습니다. (새로고침 시 사라집니다. 영구적으로 저장하려면 [영구저장] 버튼을 눌러주세요!)');
-});
-
-// [기능 B] 로컬 스토리지에 영구 저장 기능
-saveStorageBtn.addEventListener('click', () => {
-    // 현재 입력창에 작성 중인 값을 가져옵니다.
-    const name = nameInput.value.trim();
-    const message = messageInput.value.trim();
-
-    // 1. 이름과 내용이 모두 작성된 경우: 목록에 추가하고 즉시 영구 저장합니다.
-    if (name && message) {
-        guestbooks.unshift({ name, message });
-
-        nameInput.value = '';
-        messageInput.value = '';
-    }
-    // 2. 둘 중 하나만 입력된 경우: 입력을 마저 완료하도록 안내합니다.
-    else if (name || message) {
-        alert('이름과 내용을 모두 입력한 후 영구저장 버튼을 눌러주세요!');
-        return;
-    }
-    // 3. 둘 다 비어있는 경우: 기존에 임시 등록해둔 목록만 로컬 스토리지에 저장합니다.
-
-    // localStorage는 문자열만 저장할 수 있으므로 JSON.stringify()로 직렬화합니다.
-    localStorage.setItem('savedGuestbooks', JSON.stringify(guestbooks));
-
-    // 화면 목록을 즉시 갱신합니다.
-    renderGuestbooks();
-
-    alert('방명록 목록이 브라우저 스토리지에 영구 저장되었습니다! 새로고침해도 유지됩니다.');
-});
-
-// [기능 C] 초기 로드 시 로컬 스토리지에서 데이터 불러오기
-function loadSavedGuestbooks() {
-    const savedData = localStorage.getItem('savedGuestbooks');
-    if (savedData) {
-        try {
-            // 저장된 문자열을 JSON.parse()로 다시 배열로 역직렬화합니다.
-            guestbooks = JSON.parse(savedData);
-            renderGuestbooks();
-        } catch (e) {
-            console.error('데이터 파싱 오류:', e);
-        }
-    }
+function goTo(index) {
+    const n = Projects.length;
+    current = (index + n) % n;
+    layout();
+    restartAutoplay();
 }
 
-// 페이지가 열렸을 때 기존에 저장된 데이터 로딩 실행
-loadSavedGuestbooks();
+const next = () => goTo(current + 1);
+const prev = () => goTo(current - 1);
+
+/* ---------------------------------------------------------
+ * 자동 재생: 마우스를 올리거나 팝업이 열리면 멈춤
+ * --------------------------------------------------------- */
+function startAutoplay() {
+    if (reduceMotion || timer || modal.open) return;
+    timer = setInterval(next, AUTOPLAY_MS);
+}
+
+function stopAutoplay() {
+    clearInterval(timer);
+    timer = null;
+}
+
+function restartAutoplay() {
+    stopAutoplay();
+    if (!carouselHovered) startAutoplay();
+}
+
+let carouselHovered = false;
+carousel.addEventListener("mouseenter", () => { carouselHovered = true; stopAutoplay(); });
+carousel.addEventListener("mouseleave", () => { carouselHovered = false; startAutoplay(); });
+carousel.addEventListener("focusin", stopAutoplay);
+
+// 다른 탭으로 가면 멈춤
+document.addEventListener("visibilitychange", () => {
+    document.hidden ? stopAutoplay() : startAutoplay();
+});
+
+/* ---------------------------------------------------------
+ * 드래그 / 스와이프
+ * --------------------------------------------------------- */
+let dragStartX = null;
+let dragMoved = false;
+
+carousel.addEventListener("pointerdown", e => {
+    dragStartX = e.clientX;
+    dragMoved = false;
+});
+
+window.addEventListener("pointerup", e => {
+    if (dragStartX === null) return;
+    const dx = e.clientX - dragStartX;
+    dragStartX = null;
+    if (Math.abs(dx) > 50) {
+        dragMoved = true;           // 드래그 직후의 click은 무시
+        dx < 0 ? next() : prev();
+        setTimeout(() => (dragMoved = false), 0);
+    }
+});
+
+/* ---------------------------------------------------------
+ * 상세 팝업
+ * --------------------------------------------------------- */
+function renderModal(p) {
+    const meta = [
+        ["기간", p.period],
+        ["팀", p.team],
+        ["역할", p.myRole]
+    ].map(([k, v]) => `<div><dt>${k}</dt><dd>${rich(v)}</dd></div>`).join("");
+
+    const responsibilities = p.responsibilities
+        .map(r => `<li>${rich(r)}</li>`)
+        .join("");
+
+    const stack = p.stack.map(s => `
+    <div class="m-stack-row">
+      <span class="group">${escapeHtml(s.group)}</span>
+      <div class="tags">${s.items.map(t => `<span class="tag">${rich(t)}</span>`).join("")}</div>
+    </div>
+  `).join("");
+
+    const troubles = p.troubleshooting.map((t, i) => `
+    <details ${i === 0 ? "open" : ""}>
+      <summary>
+        <span class="num">${String(i + 1).padStart(2, "0")}</span>
+        <span>${rich(t.title)}</span>
+        ${icons.chev}
+      </summary>
+      <div class="ts-flow">
+        <div class="ts-step problem"><b>문제</b><p>${rich(t.problem)}</p></div>
+        <div class="ts-step cause"><b>원인</b><p>${rich(t.cause)}</p></div>
+        <div class="ts-step solution"><b>해결</b><p>${rich(t.solution)}</p></div>
+      </div>
+    </details>
+  `).join("");
+
+    const links = p.links.map(l => l.url
+        ? `<a href="${escapeHtml(l.url)}" target="_blank" rel="noopener">${icons.github}${escapeHtml(l.label)}</a>`
+        : `<a aria-disabled="true">${icons.github}${escapeHtml(l.label)} <mark class="todo">[URL]</mark></a>`
+    ).join("");
+
+    return `
+    <header class="m-hero">
+      <button class="m-close" type="button" aria-label="닫기">${icons.close}</button>
+      <p class="m-org">${rich(p.org)}</p>
+      <h2 id="modalTitle">${escapeHtml(p.title)}</h2>
+      <p class="m-sub">${rich(p.subtitle)}</p>
+      <dl class="m-meta">${meta}</dl>
+    </header>
+
+    <div class="m-body">
+      <section class="m-section">
+        <h3>Overview</h3>
+        <p class="m-overview">${rich(p.overview)}</p>
+      </section>
+
+      <section class="m-section">
+        <h3>What I Did</h3>
+        <ul class="m-list">${responsibilities}</ul>
+      </section>
+
+      <section class="m-section">
+        <h3>Tech Stack</h3>
+        <div class="m-stack">${stack}</div>
+      </section>
+
+      <section class="m-section">
+        <h3>Troubleshooting</h3>
+        <div class="ts">${troubles}</div>
+      </section>
+
+      <section class="m-section">
+        <h3>Links</h3>
+        <div class="m-links">${links}</div>
+      </section>
+    </div>
+  `;
+}
+
+function openModal(project) {
+    stopAutoplay();
+    modal.style.setProperty("--accent", project.accent);
+    modal.style.setProperty("--accent2", project.accent2);
+    modalBody.innerHTML = renderModal(project);
+    modalBody.scrollTop = 0;
+    modal.showModal();
+    document.documentElement.classList.add("lock");   // 뒤쪽 페이지 스크롤 막기
+    modalBody.querySelector(".m-close").addEventListener("click", closeModal);
+}
+
+function closeModal() {
+    if (!modal.open || modal.classList.contains("closing")) return;
+    if (reduceMotion) return finishClose();
+    modal.classList.add("closing");
+    modal.addEventListener("animationend", finishClose, { once: true });
+}
+
+function finishClose() {
+    modal.classList.remove("closing");
+    modal.close();
+}
+
+modal.addEventListener("close", () => {
+    document.documentElement.classList.remove("lock");
+    cards[current].focus({ preventScroll: true });
+    startAutoplay();
+});
+
+// 바깥(배경) 클릭 시 닫기: dialog 자체를 클릭하면 배경 영역
+modal.addEventListener("click", e => {
+    if (e.target === modal) closeModal();
+});
+
+// ESC: 기본 동작 대신 닫힘 애니메이션을 거치도록
+modal.addEventListener("cancel", e => {
+    e.preventDefault();
+    closeModal();
+});
+
+/* ---------------------------------------------------------
+ * 키보드
+ * --------------------------------------------------------- */
+document.addEventListener("keydown", e => {
+    if (modal.open) return;
+    if (e.key === "ArrowRight") next();
+    if (e.key === "ArrowLeft") prev();
+});
+
+prevBtn.addEventListener("click", prev);
+nextBtn.addEventListener("click", next);
+window.addEventListener("resize", layout);
+
+/* ---------------------------------------------------------
+ * 시작
+ * --------------------------------------------------------- */
+Projects.forEach((p, i) => {
+    const card = createCard(p, i);
+    const dot = createDot(p, i);
+    cards.push(card);
+    dots.push(dot);
+    carousel.appendChild(card);
+    dotsWrap.appendChild(dot);
+});
+
+layout();
+startAutoplay();

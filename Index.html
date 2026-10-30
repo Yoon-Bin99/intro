@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>윤빈 · Projects</title>
+    <meta name="description" content="백엔드 개발자 윤빈의 프로젝트 소개">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- 데이터를 먼저, 그 데이터를 쓰는 main.js를 나중에 불러옵니다 (defer는 순서를 지킵니다). -->
+    <script src="projects.js" defer></script>
+    <script src="main.js" defer></script>
+</head>
+<body>
+
+<!-- 배경 장식 -->
+<div class="bg" aria-hidden="true">
+    <span class="blob blob-1"></span>
+    <span class="blob blob-2"></span>
+    <span class="blob blob-3"></span>
+    <span class="grid-overlay"></span>
+</div>
+
+<header class="nav">
+    <a class="logo" href="#">YOON<span>.</span>BIN</a>
+    <nav>
+        <a href="#projects">Projects</a>
+        <a href="#" aria-disabled="true" class="soon">Blog</a>
+        <a href="https://github.com/Yoon-Bin99" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+</header>
+
+<main>
+    <section class="hero">
+        <p class="eyebrow">Backend Engineer · Projects</p>
+        <h1>만들고, 부딪히고,<br><em>해결한 기록</em></h1>
+        <p class="lead">카드를 넘겨 프로젝트를 고르고, 클릭하면 상세 내용을 볼 수 있습니다.</p>
+    </section>
+
+    <section id="projects" class="stage" aria-label="프로젝트 목록">
+        <div class="carousel" id="carousel" aria-roledescription="carousel"></div>
+
+        <div class="controls">
+            <button class="ctrl" id="prevBtn" aria-label="이전 프로젝트">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+            </button>
+            <div class="dots" id="dots" role="tablist"></div>
+            <button class="ctrl" id="nextBtn" aria-label="다음 프로젝트">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+            </button>
+        </div>
+        <p class="hint">드래그하거나 ← → 키로 넘길 수 있습니다</p>
+    </section>
+</main>
+
+<footer class="footer">
+    <p>© 2026 Yoon-Bin · <a href="https://github.com/Yoon-Bin99" target="_blank" rel="noopener">github.com/Yoon-Bin99</a></p>
+</footer>
+
+<!-- 상세 팝업: <dialog>는 ESC 닫기와 배경 처리를 브라우저가 기본 제공합니다. -->
+<dialog id="modal" class="modal" aria-labelledby="modalTitle">
+    <div class="modal-inner" id="modalBody"></div>
+</dialog>
+
+</body>
+</html>
