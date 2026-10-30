@@ -68,8 +68,8 @@ const Projects = [
         subtitle: "MSA 기반 온라인 서점",
         accent: "#2fd3a5",
         accent2: "#1aa0c8",
-        period: "[기간]",
-        team: "[인원]",
+        period: "2025.10.15 ~ 2025.12.05",
+        team: "8명",
         org: "NHN 아카데미 최종 프로젝트",
         myRole: "도서 · 카테고리 · 쿠폰 · 회원 등급",
         tags: ["Spring Boot", "JPA", "Redis", "MSA", "Scheduler", "AJAX"],
@@ -108,19 +108,20 @@ const Projects = [
             }
         ],
         links: [
-            { label: "GitHub Organization", url: "https://github.com/nhnacademy-be11-bookscamp" }
+            { label: "GitHub Organization", url: "https://github.com/nhnacademy-be11-bookscamp" },
+            { label: "Backend Repository", url: "https://github.com/nhnacademy-be11-bookscamp/api" }
         ]
     },
     {
         id: "kickoff",
-        title: "킥오프",
+        title: "kick-off",
         subtitle: "동네 축구 팀 매칭 서비스",
         accent: "#ff8a3d",
         accent2: "#ff4d6d",
-        period: "[기간]",
+        period: "2026.08.23 ~ 진행중",
         team: "개인 프로젝트",
-        org: "Side Project",
-        myRole: "[담당 범위]",
+        org: "바이브 코딩 프로젝트",
+        myRole: "풀스택 개발",
         tags: ["[기술 스택]"],
         summary: "밴드에 글을 올려 상대팀을 구하던 과정을 앱으로 옮긴 축구 팀 매칭 서비스",
         overview:
@@ -144,7 +145,7 @@ const Projects = [
             }
         ],
         links: [
-            { label: "GitHub Repository", url: "" }
+            { label: "Backend Repository", url: "https://github.com/Yoon-Bin99/kickoff_be" }
         ]
     }
 ];
