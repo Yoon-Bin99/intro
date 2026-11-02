@@ -540,3 +540,53 @@ mark.todo {
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
 }
+
+.gb-form { display: grid; gap: 8px; }
+.gb-form label { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.gb-form input,
+.gb-form textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    resize: vertical;
+}
+.gb-form input:focus,
+.gb-form textarea:focus { outline: none; border-color: var(--accent); }
+
+.gb-actions { display: flex; gap: 8px; margin-top: 12px; }
+.gb-actions button {
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    background: var(--accent);
+    color: #fff;
+}
+.gb-actions #save-storage-btn { background: transparent; border: 1px solid var(--line); }
+
+#no-guestbook { margin-top: 28px; text-align: center; color: var(--muted); font-size: 14px; }
+#guestbook-list { list-style: none; display: grid; gap: 10px; margin-top: 28px; }
+
+.guestbook-item {
+    position: relative;
+    padding: 14px 44px 14px 16px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+}
+.guestbook-name { font-size: 14px; font-weight: 700; color: var(--accent); }
+.guestbook-message { margin-top: 4px; font-size: 14.5px; white-space: pre-wrap; }
+.delete-btn {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    color: var(--muted);
+}
+.delete-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--text); }

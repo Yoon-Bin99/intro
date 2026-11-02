@@ -325,7 +325,7 @@ modal.addEventListener("cancel", e => {
  * 키보드
  * --------------------------------------------------------- */
 document.addEventListener("keydown", e => {
-    if (modal.open) return;
+    if (document.querySelector('dialog[open]')) return;
     if (e.key === "ArrowRight") next();
     if (e.key === "ArrowLeft") prev();
 });

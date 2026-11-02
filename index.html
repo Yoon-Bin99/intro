@@ -29,7 +29,7 @@
 <header class="nav">
     <a class="logo" href="#">YOON'S PROJECT</a>
     <nav>
-
+        <a href="#" id = "guestbookBtn">GuestBook</a>
         <a href="https://app.notion.com/p/YOON-BIN-Resume-8c4b2451e4508331863a81989483201d?source=copy_link" target="_blank" rel="noopener">Notion</a>
         <a href="https://github.com/Yoon-Bin99" target="_blank" rel="noopener">GitHub</a>
     </nav>
@@ -58,14 +58,173 @@
     </section>
 </main>
 
-<footer class="footer">
-    <p>© 2026 Yoon-Bin · <a href="https://github.com/Yoon-Bin99" target="_blank" rel="noopener">github.com/Yoon-Bin99</a></p>
-</footer>
-
 <!-- 상세 팝업: <dialog>는 ESC 닫기와 배경 처리를 브라우저가 기본 제공합니다. -->
 <dialog id="modal" class="modal" aria-labelledby="modalTitle">
     <div class="modal-inner" id="modalBody"></div>
 </dialog>
+
+<dialog id="guestbookModal" class="modal" aria-labelledby="gbTitle"
+        style="--accent:#5b8cff; --accent2:#9b6bff;">
+    <div class="modal-inner">
+        <header class="m-hero">
+            <button class="m-close" type="button" id="gbClose" aria-label="닫기">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+            <p class="m-org">GUESTBOOK</p>
+            <h2 id="gbTitle">방명록</h2>
+            <p class="m-sub">프로젝트를 보고 느낀 점을 남겨 주세요.</p>
+        </header>
+
+        <div class="m-body" id="contact">
+            <form class="gb-form">
+                <label for="name">이름</label>
+                <input type="text" id="name" maxlength="20" placeholder="이름을 입력하세요">
+                <label for="message">내용</label>
+                <textarea id="message" rows="4" maxlength="300" placeholder="메시지를 입력하세요"></textarea>
+                <div class="gb-actions">
+                    <button type="submit">등록</button>
+                    <button type="button" id="save-storage-btn">영구저장</button>
+                </div>
+            </form>
+
+            <p id="no-guestbook">아직 등록된 방명록이 없습니다.</p>
+            <ul id="guestbook-list"></ul>
+        </div>
+    </div>
+</dialog>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const gbModal = document.getElementById('guestbookModal');
+
+        document.getElementById('guestbookBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            gbModal.showModal();
+            document.documentElement.classList.add('lock');
+        });
+
+        function closeGuestbook() {
+            if (!gbModal.open || gbModal.classList.contains('closing')) return;
+            gbModal.classList.add('closing');
+            gbModal.addEventListener('animationend', () => {
+                gbModal.classList.remove('closing');
+                gbModal.close();
+            }, { once: true });
+        }
+
+        document.getElementById('gbClose').addEventListener('click', closeGuestbook);
+        gbModal.addEventListener('click', e => { if (e.target === gbModal) closeGuestbook(); });
+        gbModal.addEventListener('cancel', e => { e.preventDefault(); closeGuestbook(); });
+        gbModal.addEventListener('close', () => document.documentElement.classList.remove('lock'));
+
+        let guestBooks = [];
+
+        const guestBookForm = document.querySelector('#contact form');
+        const nameInput = document.getElementById('name');
+        const messageInput = document.getElementById('message');
+        const guestBookList = document.getElementById('guestbook-list');
+        const noGuestBookMsg = document.getElementById('no-guestbook');
+        const saveStorageBtn = document.getElementById('save-storage-btn');
+
+        function renderGuestBooks() {
+            guestBookList.innerHTML = '';
+
+            if (guestBooks.length === 0) {
+                noGuestBookMsg.style.display = 'block';
+                return;
+            }
+
+            noGuestBookMsg.style.display = 'none';
+
+            guestBooks.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = 'guestbook-item';
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'guestbook-name';
+                nameDiv.textContent = item.name + '님';
+
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'guestbook-message';
+                msgDiv.textContent = item.message;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.textContent = 'x';
+                deleteBtn.title = '방명록 삭제';
+
+                deleteBtn.addEventListener('click', () => {
+                    if (confirm(`'${item.name}' 님의 방명록을 삭제하시겠습니까?`)) {
+                        guestBooks.splice(index, 1);
+                        localStorage.setItem('savedGuestBooks', JSON.stringify(guestBooks));
+                        renderGuestBooks();
+                    }
+                });
+
+                li.appendChild(nameDiv);
+                li.appendChild(msgDiv);
+                li.appendChild(deleteBtn);
+
+                guestBookList.appendChild(li);
+            });
+        }
+
+        guestBookForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            const name = nameInput.value.trim();
+            const message = messageInput.value.trim();
+
+            if(!name || !message){
+                alert('이름과 내용을 모두 입력해 주세요!');
+                return;
+            }
+
+            guestBooks.unshift({name, message});
+            renderGuestBooks();
+
+            alert('방명록이 등록되었습니다. (새로고침 시 사라집니다. 영구적으로 저장하려면 우측의 [영구저장] 버튼을 눌러주세요!)');
+        });
+
+        saveStorageBtn.addEventListener('click', () => {
+            const name = nameInput.value.trim();
+            const message = messageInput.value.trim();
+
+            if(name && message){
+                guestBooks.unshift({name, message});
+
+                nameInput.value = '';
+                messageInput.value = '';
+            }else if(name || message){
+                alert('이름과 내용을 모두 입력한 후 영구저장 버튼을 눌러주세요!');
+                return;
+            }
+
+            localStorage.setItem('savedGuestBooks', JSON.stringify(guestBooks));
+            renderGuestBooks();
+
+            alert('방명록 목록이 브라우저 스토리지에 영구 저장되었습니다! 새로고침해도 유지됩니다.');
+        });
+
+        function loadSavedGuestBooks(){
+            const savedData = localStorage.getItem('savedGuestBooks');
+            if(savedData){
+                try{
+                    guestBooks = JSON.parse(savedData);
+                    renderGuestBooks();
+                }catch(e){
+                    console.error('데이터 파싱 오류: ', e);
+                }
+            }
+        }
+
+        loadSavedGuestBooks();
+    });
+</script>
+
+<footer class="footer">
+    <p>© 2026 Yoon-Bin · <a href="https://github.com/Yoon-Bin99" target="_blank" rel="noopener">github.com/Yoon-Bin99</a></p>
+</footer>
 
 </body>
 </html>
