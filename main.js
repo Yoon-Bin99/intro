@@ -63,7 +63,7 @@ function createCard(project, index) {
     card.innerHTML = `
     <span class="card-mono" aria-hidden="true">${escapeHtml(project.title.charAt(0).toUpperCase())}</span>
     <div class="card-top">
-            <span class="card-num">${String(index + 1).padStart(2, "0")}</span>
+      <span class="card-num" style="white-space:nowrap">${String(index + 1).padStart(2, "0")}</span>
       <span class="card-org">${rich(project.org)}</span>
     </div>
     <h2>${escapeHtml(project.title)}</h2>
